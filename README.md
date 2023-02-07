@@ -132,3 +132,200 @@ container_id = "fa854c65348ec911ac59460382d07485ce77a4589e5899da5f39f682e6a3e1e2
 image_id = "sha256:2e7e2ec411a6fdeee34c78b4d41d9a7f6d4cd311f320f03bcec11a239f524341nginx:latest"
 ```
 Terraform outputs can be used to connect Terraform projects with other parts of the infrastructure or with other projects.
+
+## Variables
+
+Variables are usually defined in the `variables.tf' configuration file:
+
+**variables.tf**
+```
+variable "filename" {
+    default = "/root/pets.txt"
+}
+
+variable "content" {
+    default = "we love pets!"
+}
+
+variable "prefix" {
+    default = "Mrs."
+}
+```
+And used in the `main.tf` configuration file like this:
+
+**main.tf**
+```
+resource "local_file" "pet" {
+    filename = var.filename
+    content = var.content
+}
+```
+
+### Variables can be defined in multiple ways:
+
+- Command line flags:
+```
+terraform apply -var "filename=/root/pets.txt" -var "content=we love pets!" - var "prefix=Mrs." ....
+```
+
+- Environment variables:
+```
+export TF_VAR_filename="/root/pets.txt"
+export TF_VAR_content="We love pets!"
+export TF_VAR_prefix="Mrs."
+```
+
+- Variable definition files (when there are too many variables):
+
+files named like: terraform.tfvars / terraform.tfvars.json /*.auto.tfvars/*auto.tfvars.json, will be loaded automatically by terraform.
+```
+filename="/root/pets.txt"
+content="We love pets!"
+prefix="Mrs."
+```
+
+If any other file name format is used it should be passed as argument for the apply:
+```
+terraform apply -var-file variables.tfvars
+```
+
+### Variable definition precedence
+1. **-var or -var-file** (commandline flags)
+2. ***.auto.tfvars** (alphabetical order)
+3. **terraform.tfvars**
+4. Environment variables
+
+There are multiple variable types:
+
+- **string:** “/root/pets.txt”
+- **number:** 1
+- :**bool:** true/flase
+- **any:** Default value
+- **list:** [“cat”, “dog”]
+- **map:**
+    pet1 = cat
+    pet2 = dog
+- **object:** 
+    variable "bella" {
+        type = object({
+            name = string
+            color = string 
+            food = list (string)
+        })
+       default = {
+            name = "angelica"
+            color = "black"
+            food = ["banana", "mango", "kiwi"]
+       }
+   }
+- **tuple:**
+    variable kitty {
+          type = tuple[string, number, bool]
+          default = ["cat", 9, true]
+    }
+
+## Resource Attributes
+
+Output from one resource could be used as parameters for creating other resources.
+![resource dynamic attributes](./terraform/img/resources/img.png)
+
+Some other resources doesn't need any attribute as the time_static resource type
+
+```
+resource "time_static" "time_update" {
+}
+
+resource "local_file" "time" {
+    filename = "/root/time.txt"
+    content = "Time stamp of this file is ${time_static.time_update.id}"
+}
+```
+Executing terraform plan command looks like: 
+```
+Terraform will perform the following actions:
+
+  # local_file.time will be created
+   -/+ resource "local_file" "time" {
+      ~ content              = "Time stamp of this file is {time_static.time_update.id}" -> "Time stamp of this file is 2023-02-06T19:06:04Z" # forces replacement
+        directory_permission = "0777"
+        file_permission      = "0777"
+        filename             = "/root/time.txt"
+      ~ id                   = "29c3ddf9d9e875a87d3f435d4848bb784a65ab2c" -> (known after apply)
+    }
+
+  # time_static.time_update will be created
+  + resource "time_static" "time_update" {
+      + day     = (known after apply)
+      + hour    = (known after apply)
+      + id      = (known after apply)
+      + minute  = (known after apply)
+      + month   = (known after apply)
+      + rfc3339 = (known after apply)
+      + second  = (known after apply)
+      + unix    = (known after apply)
+      + year    = (known after apply)
+    }
+```
+
+### Resource dependencies
+
+By specifying a dependency, terraform makes sure the resource will be created after it's dependency is created, multiple
+dependencies can be defined as a list.
+
+**Implicit dependency**: the resource A makes use of any of the arguments from resource B (depends_on not needed)  
+```
+resource "time_static" "time_update" {
+}
+
+resource "local_file" "time" {
+    filename = "/root/time.txt"
+    content = "Time stamp of this file is ${time_static.time_update.id}"
+}
+```
+**Explicit dependency**: resource A references explicitly any of the properties from resource B
+
+```
+resource "time_static" "time_update" {
+}
+
+resource "local_file" "time" {
+    filename = "/root/time.txt"
+    content = "Time stamp of this file is ${time_static.time_update.id}"
+    depends_on = [time_static.time_update]
+}
+```
+
+another example explicit dependency
+
+```
+resource "local_file" "whale" {
+    filename = "/root/whale"
+    content = "whale"
+    depends_on = [local_file.krill]
+}
+
+resource "local_file" "krill" {
+    filename = "/root/krill"
+    content = "krill"
+}
+```
+terraform plan
+```
+# local_file.krill will be created
++ resource "local_file" "krill" {
+    + content              = "krill"
+    + directory_permission = "0777"
+    + file_permission      = "0777"
+    + filename             = "/root/krill"
+    + id                   = (known after apply)
+      }
+
+# local_file.whale will be created
++ resource "local_file" "whale" {
+    + content              = "whale"
+    + directory_permission = "0777"
+    + file_permission      = "0777"
+    + filename             = "/root/whale"
+    + id                   = (known after apply)
+      }
+```
