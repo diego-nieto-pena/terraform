@@ -1,5 +1,5 @@
 variable "filename" {
-  default = "/root/pets.txt"
+  default = "./files/test/pets.txt"
 }
 variable "content" {
   default = "We love pets!"

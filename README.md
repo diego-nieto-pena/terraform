@@ -205,7 +205,8 @@ There are multiple variable types:
 - **map:**
     pet1 = cat
     pet2 = dog
-- **object:** 
+- **object:**
+```
     variable "bella" {
         type = object({
             name = string
@@ -218,11 +219,15 @@ There are multiple variable types:
             food = ["banana", "mango", "kiwi"]
        }
    }
+
+```
 - **tuple:**
+```
     variable kitty {
           type = tuple[string, number, bool]
           default = ["cat", 9, true]
     }
+```
 
 ## Resource Attributes
 
@@ -328,4 +333,660 @@ terraform plan
     + filename             = "/root/whale"
     + id                   = (known after apply)
       }
+```
+
+## Output variables
+
+defined using the `output` keyword, reference resources outputs
+**main.tf**
+```
+resource "local_file" "welcome" {
+  filename = "./pets.txt"
+  content = "Pets are welcome"
+}
+
+```
+**output.tf**
+```
+output "welcome_message" {
+  value = local_file.welcome.content
+}
+```
+**Terraform plan:**
+```
+  # local_file.welcome will be created
+  + resource "local_file" "welcome" {
+      + content              = "Pets are welcome"
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./pets.txt"
+      + id                   = (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + welcome_message = "Pets are welcome"
+
+```
+
+Terraform output command will show the output defined variables.
+```
+welcome_message = "Pets are welcome"
+```
+
+## Additional commands.
+
+### Validate
+Will validate if the configuration is correct or show the errors in the files.
+
+`terraform validate`
+
+```
+Success! The configuration is valid.
+```
+**OR**
+
+**main.tf**
+```
+resource "local_file" "pet" {
+  filename = var.filename
+  content = "My favorite pets is ${random_pe.my_pet.id}"
+  file_permission = "0700"
+}
+
+resource "random_pe" "my_pet" {
+  prefix = var.prefix
+  separator = var.separator
+  length = var.length
+}
+```
+**output**
+```
+╷
+│ Error: Missing required provider
+│ 
+│ This configuration requires provider registry.terraform.io/hashicorp/local, but that provider isn't available. You may be able to install it automatically by running:
+│   terraform init
+╵
+╷
+│ Error: Missing required provider
+│ 
+│ This configuration requires provider registry.terraform.io/hashicorp/random, but that provider isn't available. You may be able to install it automatically by running:
+│   terraform init
+╵
+```
+
+### terraform fmt
+Will format the configuration files
+
+**main.tf**
+```
+resource "local_file" "pet" {
+      filename = var.filename
+                      content  = "My favorite pets is ${random_pet.my_pet.id}"
+file_permission = "0700"
+}
+```
+
+```terraform fmt```
+
+```
+resource "local_file" "pet" {
+  filename        = var.filename
+  content         = "My favorite pets is ${random_pet.my_pet.id}"
+  file_permission = "0700"
+}
+```
+
+### show
+
+Show the terraform state, can be formatted as JSON
+
+```
+terraform show -json
+
+{
+   "format_version":"1.0",
+   "terraform_version":"1.3.7",
+   "values":{
+      "root_module":{
+         "resources":[
+            {
+               "address":"local_file.pet",
+               "mode":"managed",
+               "type":"local_file",
+               "name":"pet",
+               "provider_name":"registry.terraform.io/hashicorp/local",
+               "schema_version":0,
+               "values":{
+                  "content":"My favorite pets is Mrs.credible.emu",
+                  "content_base64":null,
+                  "directory_permission":"0777",
+                  "file_permission":"0700",
+                  "filename":"./files/test/pets.txt",
+                  "id":"dbb026eb147bc53d266f4e5bf219cb77d754bdc0",
+                  "sensitive_content":null,
+                  "source":null
+               },
+               "sensitive_values":{
+                  
+               },
+               "depends_on":[
+                  "random_pet.my_pet"
+               ]
+            },
+            {
+               "address":"random_pet.my_pet",
+               "mode":"managed",
+               "type":"random_pet",
+               "name":"my_pet",
+               "provider_name":"registry.terraform.io/hashicorp/random",
+               "schema_version":0,
+               "values":{
+                  "id":"Mrs.credible.emu",
+                  "keepers":null,
+                  "length":2,
+                  "prefix":"Mrs",
+                  "separator":"."
+               },
+               "sensitive_values":{
+                  
+               }
+            }
+         ]
+      }
+   }
+}
+```
+
+```
+terraform show
+
+# local_file.pet:
+resource "local_file" "pet" {
+    content              = "My favorite pets is Mrs.credible.emu"
+    directory_permission = "0777"
+    file_permission      = "0700"
+    filename             = "./files/test/pets.txt"
+    id                   = "dbb026eb147bc53d266f4e5bf219cb77d754bdc0"
+}
+
+# random_pet.my_pet:
+resource "random_pet" "my_pet" {
+    id        = "Mrs.credible.emu"
+    length    = 2
+    prefix    = "Mrs"
+    separator = "."
+}
+```
+
+### providers
+Shows configuration required providers
+
+```
+terraform providers 
+
+Providers required by configuration:
+.
+├── provider[registry.terraform.io/hashicorp/local]
+└── provider[registry.terraform.io/hashicorp/random]
+
+Providers required by state:
+
+    provider[registry.terraform.io/hashicorp/local]
+
+    provider[registry.terraform.io/hashicorp/random]
+```
+
+### terraform providers mirror <directory>
+Will download the needed providers specified in the configuration files
+```
+terraform providers mirror ./
+
+- Mirroring hashicorp/local...
+  - Selected v2.3.0 with no constraints
+  - Downloading package for darwin_arm64...
+  - Package authenticated: signed by HashiCorp
+- Mirroring hashicorp/random...
+  - Selected v3.4.3 with no constraints
+  - Downloading package for darwin_arm64...
+  - Package authenticated: signed by HashiCorp
+```
+
+### refresh
+Refresh the state comparing to a remote or centralized state
+
+```
+terraform refresh
+
+random_pet.my_pet: Refreshing state... [id=Mrs.credible.emu]
+local_file.pet: Refreshing state... [id=dbb026eb147bc53d266f4e5bf219cb77d754bdc0]
+```
+
+### graph 
+creates a graph based on the terraform plan
+
+Install needed library
+```
+brew install graphviz
+```
+
+```
+terraform graph | dot -Tsvg > graph.svg
+```
+
+![](./script/resources/graph.svg)
+
+## Immutable vs Mutable infrastructure
+
+Installing updated for nginx into different servers is an example of mutable infrastructure, as the versions can be updated.
+The versions may differ, leading to complexity increase. In teh other hand, the permissions for a file can be update it, 
+the file will be delete it, and a new one created, the same happen to immutable infrastructures, resources will be replaced 
+with new ones with the specified features. 
+
+## Lifecycle Rules
+
+- **create_before_destroy**: Creates the resource before destroying it's previous version.
+- **prevent_destroy**: Terraform will throw an error if there in an attempt of destroying the resource (terraform destroy will destroy the resource) 
+- **ignore_changes**: The resource will remain untouched
+
+### Create before destroy
+
+**main.tf**
+A new file with 0777 permissions will be created.
+```
+resource "local_file" "pet" {
+  filename        = var.filename
+  content         = "My favorite pets is ${random_pet.my_pet.id}"
+  file_permission = "0777"
+}
+
+resource "random_pet" "my_pet" {
+  prefix    = var.prefix
+  separator = var.separator
+  length    = var.length
+}
+```
+
+Marking the resource as "create_before_destroy" and changing file permissions to `0700`
+**main.tf**
+
+```
+resource "local_file" "pet" {
+  filename        = var.filename
+  content         = "My favorite pets is ${random_pet.my_pet.id}"
+  file_permission = "0777"   
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+```
+**terraform plan**
+```
++/- create replacement and then destroy  <-----
+
+Terraform will perform the following actions:
+
+# local_file.pet must be replaced
++/- resource "local_file" "pet" {
+~ file_permission      = "0777" -> "0700" # forces replacement
+~ id                   = "dbb026eb147bc53d266f4e5bf219cb77d754bdc0" -> (known after apply)
+# (3 unchanged attributes hidden)
+}
+```
+
+**terraform apply**
+
+```
+local_file.pet: Creating...
+local_file.pet: Creation complete after 0s [id=dbb026eb147bc53d266f4e5bf219cb77d754bdc0]
+local_file.pet (deposed object 6a80feb1): Destroying... [id=dbb026eb147bc53d266f4e5bf219cb77d754bdc0]
+local_file.pet: Destruction complete after 0s
+```
+
+### prevent destroy
+**main.tf**
+
+```
+resource "local_file" "pet" {
+  filename        = var.filename
+  content         = "My favorite pets is ${random_pet.my_pet.id}"
+  file_permission = "0777"   
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+```
+**terraform apply**
+```
+│ Error: Instance cannot be destroyed
+│ 
+│   on main.tf line 1:
+│    1: resource "local_file" "pet" {
+│ 
+│ Resource local_file.pet has lifecycle.prevent_destroy set, but the plan calls for this resource to be destroyed. To avoid this error and continue with the plan, either disable lifecycle.prevent_destroy or reduce the scope of the
+│ plan using the -target flag.
+╵
+```
+
+### Ignore Changes
+**main.tf**
+
+```
+resource "local_file" "pet" {
+  filename        = var.filename
+  content         = "My favorite pets is ${random_pet.my_pet.id}"
+  file_permission = "0777"   
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+```
+
+## Datasources
+
+Datasources can be defined within configuration files e.g.:
+
+- Use the `data` block in order to define a datasource.
+- Data sources are readonly resources, **CANNOT** create, update or destroy any resources.
+- Reference them as `data.<resource_type>.<resource_name>.[property_name]`
+```
+data "aws_s3_bucket" "selected" {
+  bucket_name = "bucket.test.com"
+}
+```
+
+### Local file datasource example.
+**main.tf**
+```
+resource "local_file" "lorem_ipsum_file" {
+  filename = "./lorem_ipsum_result.txt"
+  content  = data.local_file.lorem_ipsum.content
+}
+```
+
+**datasources.tf**
+```
+data "local_file" "lorem_ipsum" {
+  filename = "./lorem_ipsum.txt"
+}
+```
+
+**terraform plan**
+```
+  # local_file.lorem_ipsum_file will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./lorem_ipsum_result.txt"
+      + id                   = (known after apply)
+    }
+```
+**result**
+A new file with the datasource content is created.
+
+## Meta Arguments
+
+Arguments like depends_on, lifecycle, count ...
+
+### Count
+
+Setting the `count` attribute will create the same resource n times, in this case 3 times:
+```
+resource "local_file" "lorem_ipsum_file" {
+  filename = "./lorem_ipsum_result.txt"
+  content  = data.local_file.lorem_ipsum.content
+  count = 3
+}
+```
+**terraform plan**
+```
+# local_file.lorem_ipsum_file[0] will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./lorem_ipsum_result.txt"
+      + id                   = (known after apply)
+    }
+
+  # local_file.lorem_ipsum_file[1] will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./lorem_ipsum_result.txt" <====== SAME FILE RECREATED
+      + id                   = (known after apply)
+    }
+...
+```
+
+This can be enhanced in order to create 3 different files
+**variables.tf**
+```
+variable "filename" {
+  default = [
+    "./files/pets.txt",
+    "./files/dogs.txt",
+    "./files/cats.txt"
+  ]
+}
+```
+**main.tf**
+```
+resource "local_file" "lorem_ipsum_file" {
+  filename = var.filename[count.index] <== using the count index in order to traverse the list variable items
+  content  = data.local_file.lorem_ipsum.content
+  count = 3
+}
+```
+**terraform plan**
+```
+  # local_file.lorem_ipsum_file[1] will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./files/dogs.txt"
+      + id                   = (known after apply)
+    }
+
+  # local_file.lorem_ipsum_file[2] will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./files/cats.txt"
+      + id                   = (known after apply)
+    }
+```
+ This approach has a drawback, if a item, from the list is removed, terraform will swap positions and the result 
+ will be one file removed and two files recreated:
+ 
+**variables.tf** (pets.txt item removed)
+```
+variable "filename" {
+  default = [
+    "./files/dogs.txt",
+    "./files/cats.txt"
+  ]
+}
+```
+**main.tf**
+```
+resource "local_file" "lorem_ipsum_file" {
+  filename = var.filename[count.index]
+  content  = data.local_file.lorem_ipsum.content
+  count = 2 <== uodated the count value 
+}
+```
+
+**terraform plan**
+```
+  # local_file.lorem_ipsum_file[0] must be replaced
+-/+ resource "local_file" "lorem_ipsum_file" {
+      ~ filename             = "./files/pets.txt" -> "./files/dogs.txt" # forces replacement
+      ~ id                   = "cca0871ecbe200379f0a1e4b46de177e2d62e655" -> (known after apply)
+        # (3 unchanged attributes hidden)
+    }
+
+  # local_file.lorem_ipsum_file[1] must be replaced
+-/+ resource "local_file" "lorem_ipsum_file" {
+      ~ filename             = "./files/dogs.txt" -> "./files/cats.txt" # forces replacement
+      ~ id                   = "cca0871ecbe200379f0a1e4b46de177e2d62e655" -> (known after apply)
+        # (3 unchanged attributes hidden)
+    }
+
+  # local_file.lorem_ipsum_file[2] will be destroyed
+  # (because index [2] is out of range for count)
+  - resource "local_file" "lorem_ipsum_file" {
+      - content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." -> null
+      - directory_permission = "0777" -> null
+      - file_permission      = "0777" -> null
+      - filename             = "./files/cats.txt" -> null
+      - id                   = "cca0871ecbe200379f0a1e4b46de177e2d62e655" -> null
+    }
+```
+
+In order to avoid the behavior above, a dynamic length value can be used instead of hardcoding the count attribute.
+**variables.tf**
+```
+variable "filename" {
+  default = [
+    "./files/dogs.txt",
+    "./files/cats.txt",
+    "./files/cows.txt",
+    "./files/birds.txt",
+    "./files/mice.txt"
+  ]
+}
+```
+**main.tf**
+```
+resource "local_file" "lorem_ipsum_file" {
+  filename = var.filename[count.index]
+  content  = data.local_file.lorem_ipsum.content
+  count = length(var.filename) <== using the dynamic list's "length" attribute
+}
+```
+**terraform plan**
+```
+... list of the files to be created
+
+  # local_file.lorem_ipsum_file[3] will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./files/birds.txt"
+      + id                   = (known after apply)
+    }
+
+  # local_file.lorem_ipsum_file[4] will be created
+  + resource "local_file" "lorem_ipsum_file" {
+      + content              = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      + directory_permission = "0777"
+      + file_permission      = "0777"
+      + filename             = "./files/mice.txt"
+      + id                   = (known after apply)
+    }
+```
+
+### for_each
+- Works with set or map data types
+- referenced with the `each` keyword
+
+**main.tf**
+```
+resource "local_file" "lorem_ipsum_file" {
+  filename = each.value
+  content  = data.local_file.lorem_ipsum.content
+  for_each = var.filename <=== if the variable is of type list cast it using toset(var.filename)
+}
+```
+
+**variables.tf**
+```
+variable "filename" {
+  default = [
+    "./files/dogs.txt",
+    "./files/cats.txt",
+    "./files/cows.txt"
+  ]
+}
+```
+**terraform plan**
+```
+│ Error: Invalid for_each argument
+│ 
+│   on main.tf line 4, in resource "local_file" "lorem_ipsum_file":
+│    4:   for_each = var.filename
+│     ├────────────────
+│     │ var.filename is tuple with 3 elements
+│ 
+│ The given "for_each" argument value is unsuitable: the "for_each" argument must be a map, or set of strings, and you have provided a value of type tuple.
+```
+As the variable containing the file names was defined as a list, there are 2 alternatives; changing the data type or "casting"
+to a set data type
+**variables.tf**
+```
+variable "filename" {
+  type = set(string)  <=== 
+  default = [
+    "./files/dogs.txt",
+    "./files/cats.txt",
+    "./files/cows.txt"
+  ]
+}
+```
+
+## Version Constraints
+
+Specific resource versions can be downloaded different that the latest one.
+
+![](./terraform/img/versions/img.png)
+
+![](./terraform/img/versions/img_1.png)
+
+To make use of the specific version, copy the `terraform` block into the `main.tf` file:
+
+**main.tf**
+```
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "2.2.2"
+    }
+  }
+}
+
+resource "local_file" "lorem_ipsum_file" {
+  filename = each.value
+  content  = data.local_file.lorem_ipsum.content
+  for_each = var.filename
+}
+```
+**terraform init**
+```
+Initializing provider plugins...
+- Finding hashicorp/local versions matching "2.2.2"...
+- Installing hashicorp/local v2.2.2...
+- Installed hashicorp/local v2.2.2 (signed by HashiCorp)
+...
+```
+
+Version also can be defined by using operators:
+```
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "> 2.0" <======= a version greater than 2.0
+      version = "> 1.2.0, < 2.3.4, != 2.3.1" <======= a version greater than 1.2.0, AND lesser than 2.3.4 AND different than 2.3.1 
+    }
+  }
+}
 ```
